@@ -1,0 +1,220 @@
+#! /usr/bin/env python3 
+#
+#Final Project for 129L
+#
+#19May2020
+import math as ma
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.image as pimg
+import matplotlib.animation as animation
+
+#Change Diagram
+#Defined all parameters relevant to problem, some may not be called upon.
+#Operating on the assumption that the rotation will not cause the object to fly off of the surface of the planet (zaccel = 0)
+pi = 3.1415926535
+
+#assuming a two dimensional system and the object has no vertical component of velocity, many of the cross product terms go to zero 
+def xprod(vy,oz):
+    return vy*oz
+
+def yprod(vx,oz):
+    return  -vx*oz
+
+def zprod(vx,oy):
+    return vx*oy
+
+print()
+print('The following diagram is to be used as a reference for the inputs below, please close the figure when you wish to proceed.', '\n')
+print('The purpose of this function is, given a specified set of an initial conditions, to return a plot of an objects path due to the effects of a planetary coriolis force.','\n')
+
+#Selfmade diagram to help understand problem better
+display = pimg.imread('Diagram.png')
+imgplot = plt.imshow(display)
+plt.show()
+
+#Used to define which plot style desired
+while True:
+    please = input('Please enter a 1 for a simple plot or a 2 for an animated plot: ')
+    try:
+        please = int(please)
+    except ValueError:
+        print('Please input either a 1 or a 2', '\n')   
+    else:
+        if please == 1 or please == 2:
+            break
+    
+print()
+
+#Each line includes a ValueError so that the program will loop back immediately after a nonvalid input is entered. 
+while True: 
+    vx = input('Please input an initial x-component (East) of velocity (m/s): ')
+    print()
+    try:
+        vx = float(vx)
+    except ValueError:
+        print('Please input a number', '\n')
+    else:
+        break
+
+while True:
+    vy = input('Please input an initial y-component (South) of velocity (m/s): ')
+    print()
+    try:
+        vy = float(vy)
+    except ValueError:
+        print('Please input a number', '\n')
+    else:
+        break
+
+print('If you enter 1 for the angular velocity it will be taken as the normal angular velocity of Earth')
+
+print('(For reference the Earth rotates at about 0.00007292 rad/s)','\n')
+#I got really tired of entering Earths angular velocity over and over 
+
+while True:
+    omag = input('Please define an initial angular velocity vector (rad/s): ')
+    print() 
+    try:
+        omag = float(omag)
+    except ValueError:
+        print('Please input a number', '\n')
+    else:
+        if omag == 1.:
+            omag = 0.00007292
+            break
+        else:
+            break
+
+while True:
+    l = input('Please enter an initial latitude for the system in units of degrees: ')
+    print() 
+    try:
+        l = float(l)
+    except ValueError:
+        print('Please input a value between -90 and 90', '\n')
+    else:
+        if l > 90 or l < -90: #Conditional to allow only meaningful degree values
+            print('Please input a value between -90 and 90', '\n')
+        else:
+            break
+
+while True:
+    t = input('Please enter the desired number of seconds for the simulation: ')
+    print()
+    try: 
+        t = abs(int(t))
+#absolute value since t is defined as positive
+    except ValueError:
+        print('Please input a number', '\n')
+    else:
+        break
+time = []
+for i in range(t+1):
+    time.append(i)
+
+#Defining Vector Components of Angular Velocity Vector
+oy = np.abs(omag) * np.sin(l * 2 * pi / 360)
+oz = np.abs(omag) * np.cos(l * 2 * pi / 360)
+#define time in an array to allow for plot points
+xaccel = 2*np.abs(omag)*xprod(vy,oz)
+yaccel = 2*np.abs(omag)*xprod(vx,oz)
+
+xvel = []
+yvel = []
+xpos = []
+ypos = []
+
+#Defining functions for position and velocity so I can call upon them later
+def xv(a):
+    return 2*oy*vy*a + vx
+def yv(a):
+    return -2*oy*a*vx + vy
+def xp(a):
+    return oy*yv(a)*a**2 + xv(a)*a
+def yp(a):
+    return -oy*xv(a)*a**2 + yv(a)*a
+
+#Loops used to calculate x and y position/velocity at each timestep
+for j in range(t+1):
+    xvel.append(xv(j))
+    yvel.append(yv(j))
+#For Coriolis Force, velocity needs to be updated every iteration
+    xpos.append(xp(j))
+    ypos.append(yp(j))
+xdeviation = np.abs(xpos[-1]) - np.abs(vx * (t+1))
+ydeviation = np.abs(ypos[-1]) - np.abs(vy * (t+1))
+
+#Text that prints calculated positions and deviations 
+print('The final x-position is:', round(xpos[-1],2), 'meters')
+print('The final y-position is:', round(ypos[-1],2), 'meters')
+
+print('The deviation from the original x-component trajectory is: ', round(xdeviation, 2),'meters')
+print('The deviation from the original y-component trajectory is: ', round(ydeviation, 2),'meters')
+
+#Defining animation plot specifications
+xdata, ydata = [], []    
+fig, ax = plt.subplots()
+ln, = plt.plot(xdata,ydata, 'r-')
+ax.grid(True)
+ax.set_xlim(-abs(xp(100)) , abs(xp(100)))
+ax.set_ylim(-abs(yp(100)) , abs(yp(100)))
+ax.set_title('Trajectory of an Object Moving only due to a Coriolis Force')
+ax.set_xlabel('Distance Traveled (m) (West = Left, East = Right')
+ax.set_ylabel('Distance Traveled (m) (North = Up, South = Down')
+
+f = 0
+
+#Update sequence for animation
+def update(frame):
+    global f
+    global t 
+    global g
+
+    if t > f:
+
+        xdata.append(xp(f))
+        ydata.append(yp(f))
+        ln.set_data(xdata,ydata)
+    f += 1
+#Changes axis for larger timestep. Stops animation when the number of frames reaches the user input timestep.
+    if t > f >= 95:
+        ax.set_xlim(-abs(xp(f+5)), abs(xp(f+5)))
+        ax.set_ylim(-abs(yp(f+5)), abs(yp(f+5)))
+    return ln,
+
+#The purpose of the aninimation is to illustrate that, with a large enough timesetp and omega value, the object will undergo somewhat-circular motion. This portion is not visible in a simple graph, as an exponentionally larger velocity is required in order for the object to change directions. 
+if please == 2:
+    ani = animation.FuncAnimation(fig,update, blit=False, frames= np.linspace(0,t+1,t+1), interval=1,repeat=False)
+    plt.show()
+
+#Simple plot used for a quick result 
+if please == 1:
+    f1, ax1 = plt.subplots()
+    ax1.set_title('Path of an Object due to a Coriolis Force, Viewed from Above')
+    ax1.set_xlabel('X Position (m) (Left being West, Right being East')
+    ax1.set_ylabel('Y Position (m) (Up being North, Down Being South)')
+    ax1.set_xlim([-np.abs(xpos[-1]), np.abs(xpos[-1])])
+    ax1.set_ylim([-np.abs(ypos[-1]), np.abs(ypos[-1])])
+    ax1.plot(xpos,ypos)
+    plt.grid(b=True,which='major', color='#666666', linestyle='-')
+    f1.show()
+
+vx2c = np.square(xvel)
+vy2c = np.square(yvel)
+vx2 = np.add(vx2c, vx)
+vy2 = np.add(vy2c, vy)
+vr2 = np.add(vx2, vy2)
+vr = np.sqrt(vr2)
+#Outside of initial 1 or 2 parameter so that it shows up for both. Shows how total velocity changes due to the Coriolis Force. 
+f2, ax2 = plt.subplots()
+ax2.set_title('Overall Velocity vs Time')
+ax2.set_ylabel('Velocity (m/s)')
+ax2.set_xlabel('Time (s)')
+ax2.plot(time, vr)
+plt.grid(b=True,which='major', color='#666666', linestyle='-')
+f2.show()
+
+input('Press <Enter> to exit...')
+#Hope you have a great summer :-)
+
